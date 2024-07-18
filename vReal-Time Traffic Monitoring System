@@ -1,7 +1,7 @@
 import requests
 
 # TomTom API key
-API_KEY = 'https://{baseURL}/routemonitoring/{version}/routes?key={Your_API_Key}'
+API_KEY = 'aPnSSkzBG8qNG5B2JrAujmelhRI77RzM'
 
 def get_traffic_data(start, end):
     # Build the URL for the Route Planning API
@@ -66,3 +66,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
