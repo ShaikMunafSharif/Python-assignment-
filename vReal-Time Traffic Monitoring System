@@ -1,11 +1,11 @@
 import requests
 
-# Google Maps API key
+# TomTom API key
 API_KEY = 'https://{baseURL}/routemonitoring/{version}/routes?key={Your_API_Key}'
 
 def get_traffic_data(start, end):
-    # Build the URL for the Directions API
-    url = f'https://maps.googleapis.com/maps/api/directions/json?origin={start}&destination={end}&key={API_KEY}&departure_time=now'
+    # Build the URL for the Route Planning API
+    url = f'https://api.tomtom.com/routing/1/calculateRoute/{start}:{end}/json?key={API_KEY}&routeType=fastest&traffic=true&departAt=now'
     
     # Send the request to the API
     response = requests.get(url)
@@ -20,24 +20,23 @@ def get_traffic_data(start, end):
 def process_traffic_data(data):
     if data and 'routes' in data and len(data['routes']) > 0:
         route = data['routes'][0]
-        legs = route['legs'][0]
+        summary = route['summary']
         
         traffic_info = {
-            'start_address': legs['start_address'],
-            'end_address': legs['end_address'],
-            'distance': legs['distance']['text'],
-            'duration': legs['duration']['text'],
-            'duration_in_traffic': legs.get('duration_in_traffic', {}).get('text', 'N/A'),
+            'start_address': data['optimizedWaypoints'][0]['point']['latitude'] + "," + data['optimizedWaypoints'][0]['point']['longitude'],
+            'end_address': data['optimizedWaypoints'][1]['point']['latitude'] + "," + data['optimizedWaypoints'][1]['point']['longitude'],
+            'distance': summary['lengthInMeters'] / 1000,
+            'duration': summary['travelTimeInSeconds'] / 60,
+            'duration_in_traffic': summary.get('trafficDelayInSeconds', 0) / 60,
             'steps': []
         }
         
-        for step in legs['steps']:
-            traffic_info['steps'].append({
-                'distance': step['distance']['text'],
-                'duration': step['duration']['text'],
-                'instructions': step['html_instructions'],
-                'traffic_speed': step.get('traffic_speed_entry', [{}])[0].get('speed_category', 'N/A')
-            })
+        for leg in route['legs']:
+            for step in leg['points']:
+                traffic_info['steps'].append({
+                    'latitude': step['latitude'],
+                    'longitude': step['longitude']
+                })
         
         return traffic_info
     else:
@@ -47,20 +46,19 @@ def process_traffic_data(data):
 def display_traffic_info(traffic_info):
     if traffic_info:
         print(f"Route from {traffic_info['start_address']} to {traffic_info['end_address']}:")
-        print(f"Distance: {traffic_info['distance']}")
-        print(f"Estimated travel time: {traffic_info['duration']}")
-        print(f"Travel time in traffic: {traffic_info['duration_in_traffic']}")
+        print(f"Distance: {traffic_info['distance']} km")
+        print(f"Estimated travel time: {traffic_info['duration']} minutes")
+        print(f"Travel time in traffic: {traffic_info['duration_in_traffic']} minutes")
         print("\nSteps:")
         
         for step in traffic_info['steps']:
-            print(f" - {step['instructions']}")
-            print(f"   Distance: {step['distance']}, Duration: {step['duration']}, Traffic Speed: {step['traffic_speed']}")
+            print(f" - Latitude: {step['latitude']}, Longitude: {step['longitude']}")
     else:
         print('No traffic information available')
 
 def main():
-    start = input('Enter the starting point: ')
-    end = input('Enter the destination: ')
+    start = input('Enter the starting point (latitude,longitude): ')
+    end = input('Enter the destination (latitude,longitude): ')
     
     traffic_data = get_traffic_data(start, end)
     traffic_info = process_traffic_data(traffic_data)
